@@ -16,7 +16,7 @@ class Chunk {
 	public:
 		Chunk() {};
 		Chunk(const Chunk &copy) {};
-		virtual ~Chunk() { cerr << "Destructor: Chunk "<<this<<endl;};
+		virtual ~Chunk() {};
 
 		// get the 4-character typestring for this chunk
 		virtual std::string getChunkType() const =0;
@@ -33,19 +33,17 @@ class ContainerChunk : public Chunk {
 	private:
 		list<Chunk *> children;
 	public:
+		typedef list<Chunk *>::size_type childID_T;
+
 		ContainerChunk() {};
 		ContainerChunk(const ContainerChunk &copy) {
 			// copy the children
 			for (list<Chunk *>::const_iterator i = copy.children.begin(); i!=copy.children.end(); i++)
 				this->children.push_back((*i)->clone());
 		}
-		virtual ~ContainerChunk() {
-			cerr<<"Destructor: ContainerChunk "<<this<<endl;
-			this->clearChildren();
-		}
-		virtual Chunk *clone() const =0;
+		virtual ~ContainerChunk() { this->clearChildren(); }
 
-		typedef list<Chunk *>::size_type childID_T;
+		virtual Chunk *clone() const =0;
 
 		virtual std::string getChunkType() const =0;
 
@@ -64,9 +62,9 @@ class LeafChunk : public Chunk {
 	public:
 		LeafChunk() {};
 		LeafChunk(const LeafChunk &copy);
-		virtual ~LeafChunk() {
-			cerr << "Destructor: LeafChunk " << this << endl;
-		}
+		virtual ~LeafChunk() {};
+
+		virtual Chunk *clone() const =0;
 
 		virtual std::string getChunkType() const =0;
 		virtual vector<uint8_t> serialise(void) const =0;
@@ -79,11 +77,10 @@ class XDIFChunk : public ContainerChunk {
 	public:
 		XDIFChunk() {};
 		XDIFChunk(const XDIFChunk &copy) {};
-		virtual Chunk *clone() const {
-			return new XDIFChunk(*this);
-		}
+		virtual ~XDIFChunk(){};
 
-		virtual ~XDIFChunk(){ cerr<<"Destructor: XDIFChunk "<<this<<endl;}
+		virtual Chunk *clone() const { return new XDIFChunk(*this); };
+
 		virtual std::string getChunkType() const { return "XDIF"; };
 };
 
@@ -97,14 +94,12 @@ class METAChunk : public LeafChunk {
 		METAChunk() {};
 		METAChunk(const METAChunk &copy) {
 			// copy payload data
-			this->payload.insert(this->payload.end(), copy.payload.begin(), copy.payload.end());
+			this->payload.insert(this->payload.end(),
+					copy.payload.begin(), copy.payload.end());
 		};
-		virtual Chunk *clone() const {
-			return new METAChunk(*this);
-		}
-		virtual ~METAChunk() {
-			cerr<<"Destructor: METAChunk "<<this<<endl;
-		}
+		virtual ~METAChunk() {};
+
+		virtual Chunk *clone() const { return new METAChunk(*this); };
 
 		virtual std::string getChunkType() const { return "META"; };
 		virtual vector<uint8_t> serialise(void) const;
