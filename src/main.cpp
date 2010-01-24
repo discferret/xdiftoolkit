@@ -234,14 +234,14 @@ vector<uint8_t> METAChunk::serialise(void) const
 	}
 
 	// store payload size
-	data.push_back(payload.size() >> 56	& 0xff);
-	data.push_back(payload.size() >> 48	& 0xff);
-	data.push_back(payload.size() >> 40	& 0xff);
-	data.push_back(payload.size() >> 32	& 0xff);
-	data.push_back(payload.size() >> 24	& 0xff);
-	data.push_back(payload.size() >> 16	& 0xff);
-	data.push_back(payload.size() >> 8	& 0xff);
-	data.push_back(payload.size()		& 0xff);
+	data.push_back(payload.size() >> 56) & 0xff;
+	data.push_back(payload.size() >> 48) & 0xff;
+	data.push_back(payload.size() >> 40) & 0xff;
+	data.push_back(payload.size() >> 32) & 0xff;
+	data.push_back(payload.size() >> 24) & 0xff;
+	data.push_back(payload.size() >> 16) & 0xff;
+	data.push_back(payload.size() >> 8 ) & 0xff;
+	data.push_back(payload.size()      ) & 0xff;
 
 	// store payload
 	data.insert(data.end(), payload.begin(), payload.end());
