@@ -15,16 +15,19 @@ class Chunk {
 	public:
 		typedef list<Chunk *>::size_type childID_T;
 
-		virtual ~Chunk(){ cerr<<"Destructor: Chunk"<<endl;}
+		virtual ~Chunk() {
+			cerr<<"Destructor: Chunk"<<endl;
+			this->clearChildren();
+		}
 
 		virtual std::string getChunkType() const =0;
 
 		void addChild(Chunk *c);
 		void eraseChild(childID_T id);
-		childID_T getChildCount();
 		void clearChildren();
+		childID_T getChildCount() const;
 
-		virtual vector<uint8_t> serialise(void);
+		virtual vector<uint8_t> serialise(void) const;
 };
 
 class XDIFChunk : public Chunk {
@@ -43,30 +46,7 @@ class METAChunk : public Chunk {
 		virtual ~METAChunk(){ cerr<<"Destructor: METAChunk"<<endl;}
 
 		virtual std::string getChunkType() const { return "META"; };
-		virtual vector<uint8_t> serialise(void) {
-			vector<uint8_t> data;
-
-			// store the chunk type
-			string chunktype = this->getChunkType();
-			for (string::size_type i=0; i<chunktype.size(); i++) {
-				data.push_back(chunktype[i]);
-			}
-
-			// store payload size
-			data.push_back(payload.size() >> 56	& 0xff);
-			data.push_back(payload.size() >> 48	& 0xff);
-			data.push_back(payload.size() >> 40	& 0xff);
-			data.push_back(payload.size() >> 32	& 0xff);
-			data.push_back(payload.size() >> 24	& 0xff);
-			data.push_back(payload.size() >> 16	& 0xff);
-			data.push_back(payload.size() >> 8	& 0xff);
-			data.push_back(payload.size()		& 0xff);
-
-			// store payload
-			data.insert(data.end(), payload.begin(), payload.end());
-
-			return data;
-		}
+		virtual vector<uint8_t> serialise(void) const;
 };
 
 // exception for the factory
@@ -77,31 +57,26 @@ class EBadChunkType : public exception {
 // A really kooky implementation of a variant of the factory design pattern
 // (or possible abstract factory?)
 class ChunkFactory {
-	// build a new chunk of the specified type
-	static Chunk *build(string id) {
-		if		(id.compare("XDIF")==0) return new XDIFChunk();
-		else if	(id.compare("META")==0) return new METAChunk();
-		else throw new EBadChunkType();
-	}
+	public:
+		// build a new chunk of the specified type
+		static Chunk *build(string id) {
+			if		(id.compare("XDIF")==0) return new XDIFChunk();
+			else if	(id.compare("META")==0) return new METAChunk();
+			else throw new EBadChunkType();
+		}
 
-	// clone an existing chunk
-	static Chunk *build(Chunk &c) {
-		if		(c.getChunkType().compare("XDIF")==0)	return new XDIFChunk(dynamic_cast<XDIFChunk&>(c));
-		else if	(c.getChunkType().compare("META")==0)	return new METAChunk(dynamic_cast<METAChunk&>(c));
-		else throw new EBadChunkType();
-	}
+		// clone an existing chunk
+		static Chunk *clone(Chunk &c) {
+			if		(c.getChunkType().compare("XDIF")==0)	return new XDIFChunk(dynamic_cast<XDIFChunk&>(c));
+			else if	(c.getChunkType().compare("META")==0)	return new METAChunk(dynamic_cast<METAChunk&>(c));
+			else throw new EBadChunkType();
+		}
 };
 
 /****************************************************************************/
 
-/*
-// dtor for Chunk
-Chunk::~Chunk()
-{
-}
-*/
 // serialise a chunk
-vector<uint8_t> Chunk::serialise(void)
+vector<uint8_t> Chunk::serialise(void) const
 {
 	// allocate local vector for data store
 	vector<uint8_t> data;
@@ -126,7 +101,7 @@ vector<uint8_t> Chunk::serialise(void)
 		data.at(3) |= 0x80;
 
 		// serialise children (depth-first traversal)
-		for (list<Chunk *>::iterator i=this->children.begin(); i != this->children.end(); i++) {
+		for (list<Chunk *>::const_iterator i=this->children.begin(); i != this->children.end(); i++) {
 			vector<uint8_t> x = (*i)->serialise();
 			data.insert(data.end(), x.begin(), x.end());
 			chunksize += x.size();
@@ -150,28 +125,71 @@ vector<uint8_t> Chunk::serialise(void)
 // add a new child
 void Chunk::addChild(Chunk *c)
 {
-	this->children.push_back(c);
+	this->children.push_back(ChunkFactory::clone(*c));
 }
 
 // delete child
 void Chunk::eraseChild(Chunk::childID_T id)
 {
+	// get iterator that points to the child we want to delete
 	list<Chunk *>::iterator i = this->children.begin();
 	for (Chunk::childID_T s=0; s<id; s++) i++;
-	this->children.erase(i);
-}
 
-// get number of children
-Chunk::childID_T Chunk::getChildCount()
-{
-	return this->children.size();
+	// save pointer to child
+	Chunk *x = (*i);
+	delete x;
+
+	// remove child pointer from list
+	this->children.erase(i);
 }
 
 // clear all children
 void Chunk::clearChildren()
 {
+	// deallocate memory used by children
+	for (list<Chunk *>::iterator i = this->children.begin(); i != this->children.end(); i++) {
+		delete (*i);
+	}
+
 	this->children.clear();
 }
+
+// get number of children
+Chunk::childID_T Chunk::getChildCount() const
+{
+	return this->children.size();
+}
+
+/****************************************************************************/
+
+// serialise a META chunk
+vector<uint8_t> METAChunk::serialise(void) const
+{
+	vector<uint8_t> data;
+
+	// store the chunk type
+	string chunktype = this->getChunkType();
+	for (string::size_type i=0; i<chunktype.size(); i++) {
+		data.push_back(chunktype[i]);
+	}
+
+	// store payload size
+	data.push_back(payload.size() >> 56	& 0xff);
+	data.push_back(payload.size() >> 48	& 0xff);
+	data.push_back(payload.size() >> 40	& 0xff);
+	data.push_back(payload.size() >> 32	& 0xff);
+	data.push_back(payload.size() >> 24	& 0xff);
+	data.push_back(payload.size() >> 16	& 0xff);
+	data.push_back(payload.size() >> 8	& 0xff);
+	data.push_back(payload.size()		& 0xff);
+
+	// store payload
+	data.insert(data.end(), payload.begin(), payload.end());
+
+	return data;
+}
+
+/****************************************************************************/
 
 int main(void)
 {
