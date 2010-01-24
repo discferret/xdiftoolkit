@@ -48,9 +48,13 @@ class XDIFChunk : public ContainerChunk {
 
 class METAChunk : public Chunk {
 	public:
-		vector<uint8_t> payload;
+		vector<uint8_t> *payload;
 
-		virtual ~METAChunk(){ cerr<<"Destructor: METAChunk"<<endl;}
+		METAChunk() { payload = new vector<uint8_t>; };
+		virtual ~METAChunk() {
+			cerr<<"Destructor: METAChunk"<<endl;
+			delete payload;
+		}
 
 		virtual std::string getChunkType() const { return "META"; };
 		virtual vector<uint8_t> serialise(void) const;
@@ -181,17 +185,17 @@ vector<uint8_t> METAChunk::serialise(void) const
 	}
 
 	// store payload size
-	data.push_back(payload.size() >> 56	& 0xff);
-	data.push_back(payload.size() >> 48	& 0xff);
-	data.push_back(payload.size() >> 40	& 0xff);
-	data.push_back(payload.size() >> 32	& 0xff);
-	data.push_back(payload.size() >> 24	& 0xff);
-	data.push_back(payload.size() >> 16	& 0xff);
-	data.push_back(payload.size() >> 8	& 0xff);
-	data.push_back(payload.size()		& 0xff);
+	data.push_back(payload->size() >> 56	& 0xff);
+	data.push_back(payload->size() >> 48	& 0xff);
+	data.push_back(payload->size() >> 40	& 0xff);
+	data.push_back(payload->size() >> 32	& 0xff);
+	data.push_back(payload->size() >> 24	& 0xff);
+	data.push_back(payload->size() >> 16	& 0xff);
+	data.push_back(payload->size() >> 8		& 0xff);
+	data.push_back(payload->size()			& 0xff);
 
 	// store payload
-	data.insert(data.end(), payload.begin(), payload.end());
+	data.insert(data.end(), payload->begin(), payload->end());
 
 	return data;
 }
@@ -203,12 +207,12 @@ int main(void)
 	ContainerChunk *ch = new XDIFChunk();
 
 	METAChunk *meta = new METAChunk();
-	meta->payload.push_back('f');
-	meta->payload.push_back('o');
-	meta->payload.push_back('o');
-	meta->payload.push_back('b');
-	meta->payload.push_back('a');
-	meta->payload.push_back('r');
+	meta->payload->push_back('f');
+	meta->payload->push_back('o');
+	meta->payload->push_back('o');
+	meta->payload->push_back('b');
+	meta->payload->push_back('a');
+	meta->payload->push_back('r');
 	ch->addChild(meta);
 //	delete meta;
 
