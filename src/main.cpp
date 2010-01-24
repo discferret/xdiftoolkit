@@ -169,14 +169,14 @@ vector<uint8_t> ContainerChunk::serialise(void) const
 	}
 
 	// store the chunk length
-	data[ 4] = chunksize >> 56;
-	data[ 5] = chunksize >> 48;
-	data[ 6] = chunksize >> 40;
-	data[ 7] = chunksize >> 32;
-	data[ 8] = chunksize >> 24;
-	data[ 9] = chunksize >> 16;
-	data[10] = chunksize >> 8;
-	data[11] = chunksize;
+	data[ 4] = (chunksize >> 56) & 0xff;
+	data[ 5] = (chunksize >> 48) & 0xff;
+	data[ 6] = (chunksize >> 40) & 0xff;
+	data[ 7] = (chunksize >> 32) & 0xff;
+	data[ 8] = (chunksize >> 24) & 0xff;
+	data[ 9] = (chunksize >> 16) & 0xff;
+	data[10] = (chunksize >> 8 ) & 0xff;
+	data[11] = (chunksize      ) & 0xff;
 
 	// return the serialised data
 	return data;
