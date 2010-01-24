@@ -10,15 +10,21 @@
 using namespace std;
 
 class Chunk {
+	public:
+		virtual std::string getChunkType() const =0;
+		virtual vector<uint8_t> serialise(void) const =0;
+};
+
+class ContainerChunk : public Chunk {
 	private:
 		list<Chunk *> children;
 	public:
-		typedef list<Chunk *>::size_type childID_T;
-
-		virtual ~Chunk() {
+		virtual ~ContainerChunk() {
 			cerr<<"Destructor: Chunk"<<endl;
 			this->clearChildren();
 		}
+
+		typedef list<Chunk *>::size_type childID_T;
 
 		virtual std::string getChunkType() const =0;
 
@@ -30,10 +36,11 @@ class Chunk {
 		virtual vector<uint8_t> serialise(void) const;
 };
 
-class XDIFChunk : public Chunk {
+class XDIFChunk : public ContainerChunk {
 	public:
-		virtual std::string getChunkType() const { return "XDIF"; };
 		virtual ~XDIFChunk(){ cerr<<"Destructor: XDIFChunk"<<endl;}
+
+		virtual std::string getChunkType() const { return "XDIF"; };
 
 		// serialise is left as-is because this node contains other nodes,
 		// not payload data
@@ -42,7 +49,7 @@ class XDIFChunk : public Chunk {
 class METAChunk : public Chunk {
 	public:
 		vector<uint8_t> payload;
-		
+
 		virtual ~METAChunk(){ cerr<<"Destructor: METAChunk"<<endl;}
 
 		virtual std::string getChunkType() const { return "META"; };
@@ -75,8 +82,8 @@ class ChunkFactory {
 
 /****************************************************************************/
 
-// serialise a chunk
-vector<uint8_t> Chunk::serialise(void) const
+// serialise a container chunk
+vector<uint8_t> ContainerChunk::serialise(void) const
 {
 	// allocate local vector for data store
 	vector<uint8_t> data;
@@ -123,17 +130,17 @@ vector<uint8_t> Chunk::serialise(void) const
 }
 
 // add a new child
-void Chunk::addChild(Chunk *c)
+void ContainerChunk::addChild(Chunk *c)
 {
 	this->children.push_back(ChunkFactory::clone(*c));
 }
 
 // delete child
-void Chunk::eraseChild(Chunk::childID_T id)
+void ContainerChunk::eraseChild(ContainerChunk::childID_T id)
 {
 	// get iterator that points to the child we want to delete
 	list<Chunk *>::iterator i = this->children.begin();
-	for (Chunk::childID_T s=0; s<id; s++) i++;
+	for (ContainerChunk::childID_T s=0; s<id; s++) i++;
 
 	// save pointer to child
 	Chunk *x = (*i);
@@ -144,7 +151,7 @@ void Chunk::eraseChild(Chunk::childID_T id)
 }
 
 // clear all children
-void Chunk::clearChildren()
+void ContainerChunk::clearChildren()
 {
 	// deallocate memory used by children
 	for (list<Chunk *>::iterator i = this->children.begin(); i != this->children.end(); i++) {
@@ -155,7 +162,7 @@ void Chunk::clearChildren()
 }
 
 // get number of children
-Chunk::childID_T Chunk::getChildCount() const
+ContainerChunk::childID_T ContainerChunk::getChildCount() const
 {
 	return this->children.size();
 }
@@ -193,7 +200,7 @@ vector<uint8_t> METAChunk::serialise(void) const
 
 int main(void)
 {
-	Chunk *ch = new XDIFChunk();
+	ContainerChunk *ch = new XDIFChunk();
 
 	METAChunk *meta = new METAChunk();
 	meta->payload.push_back('f');
