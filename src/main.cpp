@@ -10,6 +10,13 @@
 using namespace std;
 
 /****************************************************************************
+ * Exceptions
+ ****************************************************************************/
+class EBadChunkType : public exception {
+	virtual const char *what() { return "invalid chunk ID"; }
+};
+
+/****************************************************************************
  * Interface for a chunk. This is what every chunk must be able to do.
  ****************************************************************************/
 class Chunk {
@@ -109,11 +116,6 @@ class METAChunk : public LeafChunk {
 /****************************************************************************
  * Chunk Factory
  ****************************************************************************/
-// exception for the factory
-class EBadChunkType : public exception {
-	virtual const char *what() { return "chunk ID invalid, cannot build!"; }
-};
-
 // A really kooky implementation of a variant of the factory design pattern
 // (or possible abstract factory?)
 class ChunkFactory {
@@ -134,8 +136,13 @@ vector<uint8_t> ContainerChunk::serialise(void) const
 	// allocate local vector for data store
 	vector<uint8_t> data;
 
-	// store the chunk type
+	// get chunk type
 	string chunktype = this->getChunkType();
+
+	// check length of chunk type
+	if (chunktype.size() != 4) throw new EBadChunkType();
+
+	// serialise the chunk type
 	for (string::size_type i=0; i<chunktype.size(); i++) {
 		data.push_back(chunktype[i]);
 	}
