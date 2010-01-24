@@ -9,20 +9,41 @@
 
 using namespace std;
 
+/****************************************************************************
+ * Interface for a chunk. This is what every chunk must be able to do.
+ ****************************************************************************/
 class Chunk {
 	public:
+		Chunk() {};
+		Chunk(const Chunk &copy) {};
+		virtual ~Chunk() { cerr << "Destructor: Chunk "<<this<<endl;};
+
+		// get the 4-character typestring for this chunk
 		virtual std::string getChunkType() const =0;
+		// serialise this chunk into a bytestream
 		virtual vector<uint8_t> serialise(void) const =0;
+		// make a copy of this chunk
+		virtual Chunk *clone() const =0;
 };
 
+/****************************************************************************
+ * A Container Chunk. A Chunk that can contain other Chunks.
+ ****************************************************************************/
 class ContainerChunk : public Chunk {
 	private:
 		list<Chunk *> children;
 	public:
+		ContainerChunk() {};
+		ContainerChunk(const ContainerChunk &copy) {
+			// copy the children
+			for (list<Chunk *>::const_iterator i = copy.children.begin(); i!=copy.children.end(); i++)
+				this->children.push_back((*i)->clone());
+		}
 		virtual ~ContainerChunk() {
-			cerr<<"Destructor: Chunk"<<endl;
+			cerr<<"Destructor: ContainerChunk "<<this<<endl;
 			this->clearChildren();
 		}
+		virtual Chunk *clone() const =0;
 
 		typedef list<Chunk *>::size_type childID_T;
 
@@ -36,30 +57,63 @@ class ContainerChunk : public Chunk {
 		virtual vector<uint8_t> serialise(void) const;
 };
 
-class XDIFChunk : public ContainerChunk {
+/****************************************************************************
+ * A Leaf Chunk. A Chunk that can't contain other Chunks.
+ ****************************************************************************/
+class LeafChunk : public Chunk {
 	public:
-		virtual ~XDIFChunk(){ cerr<<"Destructor: XDIFChunk"<<endl;}
+		LeafChunk() {};
+		LeafChunk(const LeafChunk &copy);
+		virtual ~LeafChunk() {
+			cerr << "Destructor: LeafChunk " << this << endl;
+		}
 
-		virtual std::string getChunkType() const { return "XDIF"; };
-
-		// serialise is left as-is because this node contains other nodes,
-		// not payload data
+		virtual std::string getChunkType() const =0;
+		virtual vector<uint8_t> serialise(void) const =0;
 };
 
-class METAChunk : public Chunk {
+/****************************************************************************
+ * XDIF file root chunk
+ ****************************************************************************/
+class XDIFChunk : public ContainerChunk {
 	public:
-		vector<uint8_t> *payload;
+		XDIFChunk() {};
+		XDIFChunk(const XDIFChunk &copy) {};
+		virtual Chunk *clone() const {
+			return new XDIFChunk(*this);
+		}
 
-		METAChunk() { payload = new vector<uint8_t>; };
+		virtual ~XDIFChunk(){ cerr<<"Destructor: XDIFChunk "<<this<<endl;}
+		virtual std::string getChunkType() const { return "XDIF"; };
+};
+
+/****************************************************************************
+ * XDIF:META chunk.
+ ****************************************************************************/
+class METAChunk : public LeafChunk {
+	public:
+		vector<uint8_t> payload;
+
+		METAChunk() {};
+		METAChunk(const METAChunk &copy) {
+			// copy payload data
+			this->payload.insert(this->payload.end(), copy.payload.begin(), copy.payload.end());
+		};
+		virtual Chunk *clone() const {
+			return new METAChunk(*this);
+		}
 		virtual ~METAChunk() {
-			cerr<<"Destructor: METAChunk"<<endl;
-			delete payload;
+			cerr<<"Destructor: METAChunk "<<this<<endl;
 		}
 
 		virtual std::string getChunkType() const { return "META"; };
 		virtual vector<uint8_t> serialise(void) const;
 };
 
+
+/****************************************************************************
+ * Chunk Factory
+ ****************************************************************************/
 // exception for the factory
 class EBadChunkType : public exception {
 	virtual const char *what() { return "chunk ID invalid, cannot build!"; }
@@ -73,13 +127,6 @@ class ChunkFactory {
 		static Chunk *build(string id) {
 			if		(id.compare("XDIF")==0) return new XDIFChunk();
 			else if	(id.compare("META")==0) return new METAChunk();
-			else throw new EBadChunkType();
-		}
-
-		// clone an existing chunk
-		static Chunk *clone(Chunk &c) {
-			if		(c.getChunkType().compare("XDIF")==0)	return new XDIFChunk(dynamic_cast<XDIFChunk&>(c));
-			else if	(c.getChunkType().compare("META")==0)	return new METAChunk(dynamic_cast<METAChunk&>(c));
 			else throw new EBadChunkType();
 		}
 };
@@ -136,7 +183,7 @@ vector<uint8_t> ContainerChunk::serialise(void) const
 // add a new child
 void ContainerChunk::addChild(Chunk *c)
 {
-	this->children.push_back(ChunkFactory::clone(*c));
+	this->children.push_back(c->clone());
 }
 
 // delete child
@@ -185,17 +232,17 @@ vector<uint8_t> METAChunk::serialise(void) const
 	}
 
 	// store payload size
-	data.push_back(payload->size() >> 56	& 0xff);
-	data.push_back(payload->size() >> 48	& 0xff);
-	data.push_back(payload->size() >> 40	& 0xff);
-	data.push_back(payload->size() >> 32	& 0xff);
-	data.push_back(payload->size() >> 24	& 0xff);
-	data.push_back(payload->size() >> 16	& 0xff);
-	data.push_back(payload->size() >> 8		& 0xff);
-	data.push_back(payload->size()			& 0xff);
+	data.push_back(payload.size() >> 56	& 0xff);
+	data.push_back(payload.size() >> 48	& 0xff);
+	data.push_back(payload.size() >> 40	& 0xff);
+	data.push_back(payload.size() >> 32	& 0xff);
+	data.push_back(payload.size() >> 24	& 0xff);
+	data.push_back(payload.size() >> 16	& 0xff);
+	data.push_back(payload.size() >> 8		& 0xff);
+	data.push_back(payload.size()			& 0xff);
 
 	// store payload
-	data.insert(data.end(), payload->begin(), payload->end());
+	data.insert(data.end(), payload.begin(), payload.end());
 
 	return data;
 }
@@ -207,14 +254,16 @@ int main(void)
 	ContainerChunk *ch = new XDIFChunk();
 
 	METAChunk *meta = new METAChunk();
-	meta->payload->push_back('f');
-	meta->payload->push_back('o');
-	meta->payload->push_back('o');
-	meta->payload->push_back('b');
-	meta->payload->push_back('a');
-	meta->payload->push_back('r');
+	meta->payload.push_back('f');
+	meta->payload.push_back('o');
+	meta->payload.push_back('o');
+	meta->payload.push_back('b');
+	meta->payload.push_back('a');
+	meta->payload.push_back('r');
 	ch->addChild(meta);
 //	delete meta;
+	cerr << "Deleting meta..." << endl;
+	delete meta;
 
 	// dump data to stdout
 	vector<uint8_t> data = ch->serialise();
@@ -224,8 +273,6 @@ int main(void)
 
 	cerr << "Deleting ch..." << endl;
 	delete ch;
-	cerr << "Deleting meta..." << endl;
-	delete meta;
 
 	return 0;
 }
