@@ -1,0 +1,8 @@
+syntax: glob
+dep/*.d
+obj/*.o
+*~
+.*.sw?
+test
+.buildnum
+src/version.h
