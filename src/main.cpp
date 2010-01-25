@@ -17,9 +17,30 @@ class EBadChunkType : public exception {
 };
 
 /****************************************************************************
+ * Serialised payload (with flags)
+ ****************************************************************************/
+class SerialisedPayload {
+	public:
+		// ctor
+		SerialisedPayload() {
+			this->hasChildren = false;
+		};
+
+		// TRUE if the payload contains serialised chunks
+		// (that is, this chunk is a Container Chunk)
+		// default = false
+		bool hasChildren;
+		// Payload data
+		vector<uint8_t> data;
+};
+
+/****************************************************************************
  * Interface for a chunk. This is what every chunk must be able to do.
  ****************************************************************************/
 class Chunk {
+	protected:
+		// serialise only the packet payload
+		virtual SerialisedPayload serialisePayload() const =0;
 	public:
 		Chunk() {};
 		Chunk(const Chunk &copy) {};
@@ -28,7 +49,42 @@ class Chunk {
 		// get the 4-character typestring for this chunk
 		virtual std::string getChunkType() const =0;
 		// serialise this chunk into a bytestream
-		virtual vector<uint8_t> serialise(void) const =0;
+		virtual vector<uint8_t> serialise(void) const {
+			vector<uint8_t> data;
+
+			// get chunk type
+			string chunktype = this->getChunkType();
+
+			// check length of chunk type
+			if (chunktype.size() != 4) throw new EBadChunkType();
+
+			// serialise the chunk type
+			for (string::size_type i=0; i<chunktype.size(); i++) {
+				data.push_back(chunktype[i]);
+			}
+
+			// serialise the payload data
+			SerialisedPayload payload = this->serialisePayload();
+
+			// store the chunk length
+			// MSB to LSB -- note that MSbit is set if chunk contains children
+			data.push_back(((payload.data.size() >> 56) & 0x7f) | (payload.hasChildren ? 0x80 : 0));
+			data.push_back( (payload.data.size() >> 48) & 0xff);
+			data.push_back( (payload.data.size() >> 40) & 0xff);
+			data.push_back( (payload.data.size() >> 32) & 0xff);
+			data.push_back( (payload.data.size() >> 24) & 0xff);
+			data.push_back( (payload.data.size() >> 16) & 0xff);
+			data.push_back( (payload.data.size() >> 8 ) & 0xff);
+			data.push_back( (payload.data.size()      ) & 0xff);
+
+			// store payload
+			data.insert(data.end(), payload.data.begin(), payload.data.end());
+
+			return data;
+		}
+
+		// deserialise a new chunk from a bytestream
+//		virtual Chunk *deserialise(vector<uint8_t>) const =0;
 		// make a copy of this chunk
 		virtual Chunk *clone() const =0;
 };
@@ -39,6 +95,9 @@ class Chunk {
 class ContainerChunk : public Chunk {
 	private:
 		list<Chunk *> children;
+	protected:
+		// serialise only the packet payload
+		virtual SerialisedPayload serialisePayload() const;
 	public:
 		typedef list<Chunk *>::size_type childID_T;
 
@@ -58,14 +117,15 @@ class ContainerChunk : public Chunk {
 		void eraseChild(childID_T id);
 		void clearChildren();
 		childID_T getChildCount() const;
-
-		virtual vector<uint8_t> serialise(void) const;
 };
 
 /****************************************************************************
  * A Leaf Chunk. A Chunk that can't contain other Chunks.
  ****************************************************************************/
 class LeafChunk : public Chunk {
+	protected:
+		// serialise only the packet payload
+		virtual SerialisedPayload serialisePayload(void) const =0;
 	public:
 		LeafChunk() {};
 		LeafChunk(const LeafChunk &copy);
@@ -74,7 +134,6 @@ class LeafChunk : public Chunk {
 		virtual Chunk *clone() const =0;
 
 		virtual std::string getChunkType() const =0;
-		virtual vector<uint8_t> serialise(void) const =0;
 };
 
 /****************************************************************************
@@ -95,6 +154,9 @@ class XDIFChunk : public ContainerChunk {
  * XDIF:META chunk.
  ****************************************************************************/
 class METAChunk : public LeafChunk {
+	protected:
+		// serialise only the packet payload
+		virtual SerialisedPayload serialisePayload(void) const;
 	public:
 		vector<uint8_t> payload;
 
@@ -109,7 +171,6 @@ class METAChunk : public LeafChunk {
 		virtual Chunk *clone() const { return new METAChunk(*this); };
 
 		virtual std::string getChunkType() const { return "META"; };
-		virtual vector<uint8_t> serialise(void) const;
 };
 
 
@@ -131,55 +192,25 @@ class ChunkFactory {
 /****************************************************************************/
 
 // serialise a container chunk
-vector<uint8_t> ContainerChunk::serialise(void) const
+SerialisedPayload ContainerChunk::serialisePayload() const
 {
-	// allocate local vector for data store
-	vector<uint8_t> data;
-
-	// get chunk type
-	string chunktype = this->getChunkType();
-
-	// check length of chunk type
-	if (chunktype.size() != 4) throw new EBadChunkType();
-
-	// serialise the chunk type
-	for (string::size_type i=0; i<chunktype.size(); i++) {
-		data.push_back(chunktype[i]);
-	}
-
-	// 8 placeholder bytes for the length
-	for (int i=0; i<8; i++) {
-		data.push_back('\0');
-	}
-
-	// keep track of chunk size
-	uint64_t chunksize = 0;
+	// allocate local data store
+	SerialisedPayload sp;
 
 	// any children?
 	if (this->children.size() > 0) {
 		// set "Chunk Has Children" bit
-		data.at(3) |= 0x80;
+		sp.hasChildren = true;
 
 		// serialise children (depth-first traversal)
 		for (list<Chunk *>::const_iterator i=this->children.begin(); i != this->children.end(); i++) {
 			vector<uint8_t> x = (*i)->serialise();
-			data.insert(data.end(), x.begin(), x.end());
-			chunksize += x.size();
+			sp.data.insert(sp.data.end(), x.begin(), x.end());
 		}
 	}
 
-	// store the chunk length
-	data[ 4] = (chunksize >> 56) & 0xff;
-	data[ 5] = (chunksize >> 48) & 0xff;
-	data[ 6] = (chunksize >> 40) & 0xff;
-	data[ 7] = (chunksize >> 32) & 0xff;
-	data[ 8] = (chunksize >> 24) & 0xff;
-	data[ 9] = (chunksize >> 16) & 0xff;
-	data[10] = (chunksize >> 8 ) & 0xff;
-	data[11] = (chunksize      ) & 0xff;
-
 	// return the serialised data
-	return data;
+	return sp;
 }
 
 // add a new child
@@ -223,30 +254,17 @@ ContainerChunk::childID_T ContainerChunk::getChildCount() const
 /****************************************************************************/
 
 // serialise a META chunk
-vector<uint8_t> METAChunk::serialise(void) const
+SerialisedPayload METAChunk::serialisePayload(void) const
 {
-	vector<uint8_t> data;
+	SerialisedPayload sp;
 
-	// store the chunk type
-	string chunktype = this->getChunkType();
-	for (string::size_type i=0; i<chunktype.size(); i++) {
-		data.push_back(chunktype[i]);
-	}
-
-	// store payload size
-	data.push_back(payload.size() >> 56) & 0xff;
-	data.push_back(payload.size() >> 48) & 0xff;
-	data.push_back(payload.size() >> 40) & 0xff;
-	data.push_back(payload.size() >> 32) & 0xff;
-	data.push_back(payload.size() >> 24) & 0xff;
-	data.push_back(payload.size() >> 16) & 0xff;
-	data.push_back(payload.size() >> 8 ) & 0xff;
-	data.push_back(payload.size()      ) & 0xff;
+	// set "has children" flag
+	sp.hasChildren = false;
 
 	// store payload
-	data.insert(data.end(), payload.begin(), payload.end());
+	sp.data.insert(sp.data.end(), payload.begin(), payload.end());
 
-	return data;
+	return sp;
 }
 
 /****************************************************************************/
