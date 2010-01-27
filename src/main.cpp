@@ -4,6 +4,7 @@
 #include <cstring>
 #include <vector>
 #include <list>
+#include <map>
 #include <iostream>
 #include <exception>
 
@@ -41,10 +42,26 @@ class Chunk {
 	protected:
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const =0;
+		// list of creators available
+		static std::map<std::string, Chunk *> creationMap;
 	public:
 		Chunk() {};
 		Chunk(const Chunk &copy) {};
-		virtual ~Chunk() {};
+		virtual ~Chunk()
+		{
+			// make sure all the prototypes in creationMap are freed
+			// admittedly this is mostly to appease the beast that is Valgrind...
+			while (!creationMap.empty()) {
+				std::map<std::string, Chunk *>::iterator i = creationMap.begin();
+				// map->erase() invalidates the iterator, so keep a copy of the
+				// chunk pointer to work from
+				Chunk *x = (*i).second;
+				// remove the chunk from the map
+				creationMap.erase(i);
+				// destroy the chunk
+				delete x;
+			}
+		};
 
 		// get the 4-character typestring for this chunk
 		virtual std::string getChunkType() const =0;
@@ -188,6 +205,10 @@ class ChunkFactory {
 			else throw new EBadChunkType();
 		}
 };
+
+/****************************************************************************/
+
+std::map<std::string, Chunk *> Chunk::creationMap;
 
 /****************************************************************************/
 
