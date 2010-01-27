@@ -17,6 +17,10 @@ class EBadChunkType : public exception {
 	virtual const char *what() { return "invalid chunk ID"; }
 };
 
+class EPayloadError : public exception {
+	virtual const char *what() { return "payload error"; }
+};
+
 /****************************************************************************
  * Serialised payload (with flags)
  ****************************************************************************/
@@ -43,7 +47,7 @@ class Chunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const =0;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(SerialisedPayload data) const =0;
+		virtual Chunk *deserialisePayload(string chunkID, SerialisedPayload data) const =0;
 	public:
 		Chunk() {};
 		Chunk(const Chunk &copy) {};
@@ -63,6 +67,8 @@ class Chunk {
 		virtual Chunk *clone() const =0;
 
 		// create a new, empty object of this type
+		virtual Chunk *create() const =0;
+		// create a new object of this type and deserialise the payload
 		virtual Chunk *create(SerialisedPayload payload) const =0;
 };
 
@@ -126,6 +132,16 @@ static class _x_ChunkFactory {
 		}
 
 		// create a chunk of a specified type
+		Chunk *create(string chunkID)
+		{
+			// make sure there's a chunk of this type in the map
+			if (creationMap().count(chunkID) == 0) throw new EBadChunkType();
+
+			// build a chunk based on the prototype
+			return creationMap()[chunkID]->create();
+		}
+
+		// create a chunk of a specified type and deserialise the payload
 		Chunk *create(string chunkID, SerialisedPayload payload)
 		{
 			// make sure there's a chunk of this type in the map
@@ -146,7 +162,7 @@ class ContainerChunk : public Chunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(SerialisedPayload data) const;
+		virtual Chunk *deserialisePayload(string chunkID, SerialisedPayload data) const;
 	public:
 		typedef list<Chunk *>::size_type childID_T;
 
@@ -160,6 +176,7 @@ class ContainerChunk : public Chunk {
 
 		virtual Chunk *clone() const =0;
 		virtual Chunk *create(SerialisedPayload payload) const =0;
+		virtual Chunk *create() const =0;
 
 		virtual std::string getChunkType() const =0;
 
@@ -177,7 +194,7 @@ class LeafChunk : public Chunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload(void) const =0;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(SerialisedPayload data) const =0;
+		virtual Chunk *deserialisePayload(string chunkID, SerialisedPayload data) const =0;
 	public:
 		LeafChunk() {};
 		LeafChunk(const LeafChunk &copy);
@@ -185,6 +202,7 @@ class LeafChunk : public Chunk {
 
 		virtual Chunk *clone() const =0;
 		virtual Chunk *create(SerialisedPayload payload) const =0;
+		virtual Chunk *create() const =0;
 
 		virtual std::string getChunkType() const =0;
 };
@@ -199,7 +217,8 @@ class XDIFChunk : public ContainerChunk {
 		virtual ~XDIFChunk(){};
 
 		virtual Chunk *clone() const { return new XDIFChunk(*this); };
-		virtual Chunk *create(SerialisedPayload payload) const { return new XDIFChunk(); };	// TODO!
+		virtual Chunk *create(SerialisedPayload payload) const { return deserialisePayload("XDIF", payload); };
+		virtual Chunk *create() const { return new XDIFChunk(); };
 
 		virtual std::string getChunkType() const { return "XDIF"; };
 };
@@ -221,7 +240,7 @@ class METAChunk : public LeafChunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload(void) const;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(SerialisedPayload data) const;
+		virtual Chunk *deserialisePayload(string chunkID, SerialisedPayload data) const;
 	public:
 		vector<uint8_t> payload;
 
@@ -235,6 +254,7 @@ class METAChunk : public LeafChunk {
 
 		virtual Chunk *clone() const { return new METAChunk(*this); };
 		virtual Chunk *create(SerialisedPayload payload) const { return new METAChunk(); };	// TODO!
+		virtual Chunk *create() const { return new METAChunk(); };
 
 		virtual std::string getChunkType() const { return "META"; };
 };
@@ -323,7 +343,7 @@ Chunk *Chunk::deserialise(vector<uint8_t> data)
 	// SerialisedPayload obj and pass the data along
 	SerialisedPayload sp;
 	sp.hasChildren = has_children;
-	sp.data.insert(sp.data.end(), it, it+sz-1);
+	sp.data.insert(sp.data.end(), it, it+sz);
 
 	return chunkFactory.create(chunktype, sp);
 }
@@ -354,9 +374,65 @@ SerialisedPayload ContainerChunk::serialisePayload() const
 }
 
 // deserialise a container chunk
-Chunk *ContainerChunk::deserialisePayload(SerialisedPayload data) const
+Chunk *ContainerChunk::deserialisePayload(string chunkID, SerialisedPayload data) const
 {
-	// TODO!
+	// TODO
+	cerr << "container chunk deserialise" << endl;
+
+	// Check that this chunk either has children or is empty.
+	if (!(data.data.empty() || data.hasChildren)) throw new EPayloadError();
+
+	// If we have no children to process, return an empty chunk
+	if (!data.hasChildren) return chunkFactory.create(chunkID);
+
+	// create a new container chunk using the factory
+	ContainerChunk *ch = dynamic_cast<ContainerChunk *>(chunkFactory.create(chunkID));
+
+	// Now onto the real business of deserialisation...
+	// Start at the beginning of the data buffer
+	vector<uint8_t>::iterator it = data.data.begin();
+	while (it != data.data.end()) {
+		// save pointer to start of chunk
+		vector<uint8_t>::iterator i_chunkstart = it;
+		bool has_children = false;
+
+		// read chunk type of first child
+		char chunktype[5];
+		for (int i=0; i<4; i++) {
+			chunktype[i] = *it;
+			it++;
+		}
+		chunktype[4] = '\0';
+
+		cerr << "container deserialise: chunktype " << chunktype << endl;
+
+		// read flag byte
+		if ((*it) & 0x80) has_children = true;
+		it++;
+
+		// skip over reserved bytes
+		it += 3;
+
+		// read chunk size
+		vector<uint8_t>::size_type sz = 0;
+		for (int i=0; i<4; i++) {
+			sz = (sz << 8) + (*it);
+			it++;
+		}
+
+		// now we know where the data ends. slice!
+		SerialisedPayload sliced_data;
+		sliced_data.data.insert(sliced_data.data.end(), i_chunkstart, it+sz);
+
+		// update root iterator
+		it += sz;
+
+		// create the child!
+		ch->addChild(chunkFactory.create(chunktype, sliced_data));
+	}
+
+	// return the decoded chunk
+	return ch;
 }
 
 // add a new child
@@ -414,7 +490,7 @@ SerialisedPayload METAChunk::serialisePayload(void) const
 }
 
 // deserialise a META chunk
-Chunk *METAChunk::deserialisePayload(SerialisedPayload data) const
+Chunk *METAChunk::deserialisePayload(string chunkID, SerialisedPayload data) const
 {
 	cerr << "DeserialiseMeta: " << endl << "\t";
 	for (size_t i=0; i<data.data.size(); i++) {
