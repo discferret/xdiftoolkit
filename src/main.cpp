@@ -256,16 +256,17 @@ vector<uint8_t> Chunk::serialise(void) const
 	// serialise the payload data
 	SerialisedPayload payload = this->serialisePayload();
 
-	// store the chunk length
-	// MSB to LSB -- note that MSbit is set if chunk contains children
-	data.push_back(((payload.data.size() >> 56) & 0x7f) | (payload.hasChildren ? 0x80 : 0));
-	data.push_back( (payload.data.size() >> 48) & 0xff);
-	data.push_back( (payload.data.size() >> 40) & 0xff);
-	data.push_back( (payload.data.size() >> 32) & 0xff);
-	data.push_back( (payload.data.size() >> 24) & 0xff);
-	data.push_back( (payload.data.size() >> 16) & 0xff);
-	data.push_back( (payload.data.size() >> 8 ) & 0xff);
-	data.push_back( (payload.data.size()      ) & 0xff);
+	// store the flag byte and 3 reserved bytes
+	data.push_back(payload.hasChildren ? 0x80 : 0);
+	data.push_back(0);
+	data.push_back(0);
+	data.push_back(0);
+	
+	// store the chunk length (MSB to LSB -- big endian)
+	data.push_back((payload.data.size() >> 24) & 0xff);
+	data.push_back((payload.data.size() >> 16) & 0xff);
+	data.push_back((payload.data.size() >> 8 ) & 0xff);
+	data.push_back((payload.data.size()      ) & 0xff);
 
 	// store payload
 	data.insert(data.end(), payload.data.begin(), payload.data.end());
