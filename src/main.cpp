@@ -42,6 +42,8 @@ class Chunk {
 	protected:
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const =0;
+		// deserialise the packet payload into a chunk
+		virtual Chunk *deserialisePayload(vector<uint8_t> data) const =0;
 	public:
 		Chunk() {};
 		Chunk(const Chunk &copy) {};
@@ -59,6 +61,9 @@ class Chunk {
 		}
 
 		// make a copy of this chunk
+		// this is used to get around the need for dynamic_casts and RTTI
+		// and is a tidier solution, even if it fits more with the java
+		// notion of objects.
 		virtual Chunk *clone() const =0;
 };
 
@@ -98,8 +103,11 @@ static class _x_ChunkFactory {
 		// register a new class with the factory
 		void registerClass(string chunkID, Chunk *prototype)
 		{
-			// add to the map
-			creationMap()[chunkID] = prototype;
+			// only add if there isn't an object of this type in the map
+			if (creationMap().count(chunkID) == 0) {
+				// add to the map
+				creationMap()[chunkID] = prototype;
+			}
 		}
 } chunkFactory;
 
@@ -112,6 +120,8 @@ class ContainerChunk : public Chunk {
 	protected:
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const;
+		// deserialise the packet payload into a chunk
+		virtual Chunk *deserialisePayload(vector<uint8_t> data) const;
 	public:
 		typedef list<Chunk *>::size_type childID_T;
 
@@ -140,6 +150,8 @@ class LeafChunk : public Chunk {
 	protected:
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload(void) const =0;
+		// deserialise the packet payload into a chunk
+		virtual Chunk *deserialisePayload(vector<uint8_t> data) const =0;
 	public:
 		LeafChunk() {};
 		LeafChunk(const LeafChunk &copy);
@@ -164,6 +176,15 @@ class XDIFChunk : public ContainerChunk {
 		virtual std::string getChunkType() const { return "XDIF"; };
 };
 
+// NOTE: should be in the .cpp file, not the header
+static class _x_XDIFChunkInitialiser {
+	public:
+		_x_XDIFChunkInitialiser() {
+			cerr << "XDIF chunkinit" << endl;
+			chunkFactory.registerClass("XDIF", new XDIFChunk());
+		}
+} _xv_XDIFChunkInitialiser;
+
 /****************************************************************************
  * XDIF:META chunk.
  ****************************************************************************/
@@ -171,6 +192,8 @@ class METAChunk : public LeafChunk {
 	protected:
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload(void) const;
+		// deserialise the packet payload into a chunk
+		virtual Chunk *deserialisePayload(vector<uint8_t> data) const;
 	public:
 		vector<uint8_t> payload;
 
@@ -186,6 +209,16 @@ class METAChunk : public LeafChunk {
 
 		virtual std::string getChunkType() const { return "META"; };
 };
+
+// NOTE: should be in the .cpp file, not the header
+static class _x_METAChunkInitialiser {
+	public:
+		_x_METAChunkInitialiser() {
+			cerr << "META chunkinit" << endl;
+			chunkFactory.registerClass("META", new METAChunk());
+		}
+} _xv_METAChunkInitialiser;
+
 
 
 /****************************************************************************
@@ -265,6 +298,12 @@ SerialisedPayload ContainerChunk::serialisePayload() const
 	return sp;
 }
 
+// deserialise a container chunk
+Chunk *ContainerChunk::deserialisePayload(vector<uint8_t> data) const
+{
+	// TODO... deserialise container chunk
+}
+
 // add a new child
 void ContainerChunk::addChild(Chunk *c)
 {
@@ -318,6 +357,19 @@ SerialisedPayload METAChunk::serialisePayload(void) const
 
 	return sp;
 }
+
+// deserialise a META chunk
+Chunk *METAChunk::deserialisePayload(vector<uint8_t> data) const
+{
+	cerr << "DeserialiseMeta: " << endl << "\t";
+	for (size_t i=0; i<data.size(); i++) {
+		cerr << (char)data[i] << " ";
+	}
+	cerr << endl;
+
+	return new METAChunk();
+}
+
 
 /****************************************************************************/
 
