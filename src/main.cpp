@@ -283,7 +283,7 @@ Chunk *Chunk::deserialise(vector<uint8_t> data)
 		chunktype[i] = *it;
 		it++;
 	}
-	chunktype[5] = '\0';
+	chunktype[4] = '\0';
 
 	cerr << "deserialise: chunktype " << chunktype << endl;
 
