@@ -43,7 +43,7 @@ class Chunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const =0;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(vector<uint8_t> data) const =0;
+		virtual Chunk *deserialisePayload(SerialisedPayload data) const =0;
 	public:
 		Chunk() {};
 		Chunk(const Chunk &copy) {};
@@ -121,7 +121,7 @@ class ContainerChunk : public Chunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(vector<uint8_t> data) const;
+		virtual Chunk *deserialisePayload(SerialisedPayload data) const;
 	public:
 		typedef list<Chunk *>::size_type childID_T;
 
@@ -151,7 +151,7 @@ class LeafChunk : public Chunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload(void) const =0;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(vector<uint8_t> data) const =0;
+		virtual Chunk *deserialisePayload(SerialisedPayload data) const =0;
 	public:
 		LeafChunk() {};
 		LeafChunk(const LeafChunk &copy);
@@ -193,7 +193,7 @@ class METAChunk : public LeafChunk {
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload(void) const;
 		// deserialise the packet payload into a chunk
-		virtual Chunk *deserialisePayload(vector<uint8_t> data) const;
+		virtual Chunk *deserialisePayload(SerialisedPayload data) const;
 	public:
 		vector<uint8_t> payload;
 
@@ -299,7 +299,7 @@ SerialisedPayload ContainerChunk::serialisePayload() const
 }
 
 // deserialise a container chunk
-Chunk *ContainerChunk::deserialisePayload(vector<uint8_t> data) const
+Chunk *ContainerChunk::deserialisePayload(SerialisedPayload data) const
 {
 	// TODO... deserialise container chunk
 }
@@ -359,11 +359,11 @@ SerialisedPayload METAChunk::serialisePayload(void) const
 }
 
 // deserialise a META chunk
-Chunk *METAChunk::deserialisePayload(vector<uint8_t> data) const
+Chunk *METAChunk::deserialisePayload(SerialisedPayload data) const
 {
 	cerr << "DeserialiseMeta: " << endl << "\t";
-	for (size_t i=0; i<data.size(); i++) {
-		cerr << (char)data[i] << " ";
+	for (size_t i=0; i<data.data.size(); i++) {
+		cerr << (char)data.data[i] << " ";
 	}
 	cerr << endl;
 
