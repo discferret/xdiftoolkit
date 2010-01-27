@@ -7,7 +7,6 @@
 #include <map>
 #include <iostream>
 #include <exception>
-#include <algorithm>
 
 using namespace std;
 
@@ -308,7 +307,7 @@ Chunk *Chunk::deserialise(vector<uint8_t> data)
 	// SerialisedPayload obj and pass the data along
 	SerialisedPayload sp;
 	sp.hasChildren = has_children;
-	copy(it, it+sz, sp.data.begin());
+	sp.data.insert(sp.data.end(), it, it+sz-1);
 
 	return chunkFactory.create(chunktype, sp);
 }
