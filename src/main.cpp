@@ -66,42 +66,8 @@ class Chunk {
 		// get the 4-character typestring for this chunk
 		virtual std::string getChunkType() const =0;
 		// serialise this chunk into a bytestream
-		virtual vector<uint8_t> serialise(void) const {
-			vector<uint8_t> data;
+		virtual vector<uint8_t> serialise(void) const;
 
-			// get chunk type
-			string chunktype = this->getChunkType();
-
-			// check length of chunk type
-			if (chunktype.size() != 4) throw new EBadChunkType();
-
-			// serialise the chunk type
-			for (string::size_type i=0; i<chunktype.size(); i++) {
-				data.push_back(chunktype[i]);
-			}
-
-			// serialise the payload data
-			SerialisedPayload payload = this->serialisePayload();
-
-			// store the chunk length
-			// MSB to LSB -- note that MSbit is set if chunk contains children
-			data.push_back(((payload.data.size() >> 56) & 0x7f) | (payload.hasChildren ? 0x80 : 0));
-			data.push_back( (payload.data.size() >> 48) & 0xff);
-			data.push_back( (payload.data.size() >> 40) & 0xff);
-			data.push_back( (payload.data.size() >> 32) & 0xff);
-			data.push_back( (payload.data.size() >> 24) & 0xff);
-			data.push_back( (payload.data.size() >> 16) & 0xff);
-			data.push_back( (payload.data.size() >> 8 ) & 0xff);
-			data.push_back( (payload.data.size()      ) & 0xff);
-
-			// store payload
-			data.insert(data.end(), payload.data.begin(), payload.data.end());
-
-			return data;
-		}
-
-		// deserialise a new chunk from a bytestream
-//		virtual Chunk *deserialise(vector<uint8_t>) const =0;
 		// make a copy of this chunk
 		virtual Chunk *clone() const =0;
 };
@@ -209,6 +175,42 @@ class ChunkFactory {
 /****************************************************************************/
 
 std::map<std::string, Chunk *> Chunk::creationMap;
+
+vector<uint8_t> Chunk::serialise(void) const
+{
+	vector<uint8_t> data;
+
+	// get chunk type
+	string chunktype = this->getChunkType();
+
+	// check length of chunk type
+	if (chunktype.size() != 4) throw new EBadChunkType();
+
+	// serialise the chunk type
+	for (string::size_type i=0; i<chunktype.size(); i++) {
+		data.push_back(chunktype[i]);
+	}
+
+	// serialise the payload data
+	SerialisedPayload payload = this->serialisePayload();
+
+	// store the chunk length
+	// MSB to LSB -- note that MSbit is set if chunk contains children
+	data.push_back(((payload.data.size() >> 56) & 0x7f) | (payload.hasChildren ? 0x80 : 0));
+	data.push_back( (payload.data.size() >> 48) & 0xff);
+	data.push_back( (payload.data.size() >> 40) & 0xff);
+	data.push_back( (payload.data.size() >> 32) & 0xff);
+	data.push_back( (payload.data.size() >> 24) & 0xff);
+	data.push_back( (payload.data.size() >> 16) & 0xff);
+	data.push_back( (payload.data.size() >> 8 ) & 0xff);
+	data.push_back( (payload.data.size()      ) & 0xff);
+
+	// store payload
+	data.insert(data.end(), payload.data.begin(), payload.data.end());
+
+	return data;
+}
+
 
 /****************************************************************************/
 
