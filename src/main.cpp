@@ -301,7 +301,37 @@ SerialisedPayload ContainerChunk::serialisePayload() const
 // deserialise a container chunk
 Chunk *ContainerChunk::deserialisePayload(SerialisedPayload data) const
 {
-	// TODO... deserialise container chunk
+/*	// The data we've got is the payload. That is, it's a bunch of child
+	// chunks concatenated one after the other. Work through the chunks
+	// and deserialise the children.
+	vector<uint8_t>::const_iterator it = data.begin();
+	while (it != data.end()) {
+		// read chunk ID
+		char chunkID[5];
+		for (int i=0; i<4; i++) chunkID[i] = (*it++);
+		chunkID[5] = '\0';
+
+		// now read the chunk length
+		vector<uint8_t>::size_type sz = 0;
+		for (int i=0; i<8; i++) {
+			sz = (sz << 8) | (*it++);
+		}
+
+		// mask off the Has Children bit
+		bool hasChildren = (sz & 0x8000000000000000ull);
+		sz &= 0x7fffffffffffffffull;
+
+		// iterator now points to the start of data; copy the payload and
+		// deserialise the chunk
+		vector<uint8_t> payload(it, it+sz);
+		if (hasChildren) {
+			ch->addChild(new ContainerChunk(payload));
+		} else {
+			ch->addChild(Chunk::
+	}
+
+	return ch;
+*/
 }
 
 // add a new child
