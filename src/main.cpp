@@ -74,13 +74,20 @@ static class _x_ChunkFactory {
 		// "construct on first use" idiom/pattern -- C++FAQ 10.13
 		_T& creationMap(void)
 		{
-			static _T cm;
-			return cm;
+			static _T singleton;
+			return singleton;
 		}
 
 	public:
 		// ctor
-		_x_ChunkFactory() {};
+		_x_ChunkFactory()
+		{
+			// This is utterly pointless (maps start out empty), but it makes
+			// it VERY clear to the compiler / linker that the singleton
+			// object must be destroyed AFTER we've finished with it.
+			// See C++ FAQ sec 10.14 for more info on this. Ugh.
+			creationMap().clear();
+		};
 
 		// dtor
 		~_x_ChunkFactory()
