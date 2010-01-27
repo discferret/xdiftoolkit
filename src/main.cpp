@@ -106,6 +106,15 @@ static class _x_ChunkFactory {
 			}
 		}
 
+		// Dump a list of class prototypes
+		void dump() {
+			cerr << creationMap().size() << " prototypes in chunk factory:" << endl;
+			for (_T::iterator i = creationMap().begin(); i!=creationMap().end(); i++) {
+				cerr << "\tChunktype '" << (*i).first << "' => " <<
+					(*i).second << endl;
+			}
+		}
+
 		// register a new class with the factory
 		void registerClass(string chunkID, Chunk *prototype)
 		{
@@ -421,6 +430,9 @@ Chunk *METAChunk::deserialisePayload(SerialisedPayload data) const
 
 int main(void)
 {
+	// dump list of chunk prototypes
+	chunkFactory.dump();
+
 	ContainerChunk *ch = new XDIFChunk();
 
 	METAChunk *meta = new METAChunk();
