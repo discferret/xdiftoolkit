@@ -54,17 +54,16 @@ class Chunk {
 		// serialise this chunk into a bytestream
 		virtual vector<uint8_t> serialise(void) const;
 		// deserialise a new chunk from a bytestream
-		virtual Chunk *deserialise(vector<uint8_t> data)
-		{
-			// not finished yet
-			return NULL;
-		}
+		virtual Chunk *deserialise(vector<uint8_t> data) const;
 
 		// make a copy of this chunk
 		// this is used to get around the need for dynamic_casts and RTTI
-		// and is a tidier solution, even if it fits more with the java
-		// notion of objects.
+		// and is a tidier solution, even if it fits more with Java conventions
+		// than C++ ones.
 		virtual Chunk *clone() const =0;
+
+		// create a new, empty object of this type
+		virtual Chunk *create() const =0;
 };
 
 static class _x_ChunkFactory {
@@ -109,6 +108,16 @@ static class _x_ChunkFactory {
 				creationMap()[chunkID] = prototype;
 			}
 		}
+
+		// create a chunk of a specified type
+		Chunk *create(string chunkID)
+		{
+			// make sure there's a chunk of this type in the map
+			if (creationMap().count(chunkID) == 0) throw new EBadChunkType();
+
+			// build a chunk based on the prototype
+			return creationMap()[chunkID]->create();
+		}
 } chunkFactory;
 
 /****************************************************************************
@@ -134,6 +143,7 @@ class ContainerChunk : public Chunk {
 		virtual ~ContainerChunk() { this->clearChildren(); }
 
 		virtual Chunk *clone() const =0;
+		virtual Chunk *create() const =0;
 
 		virtual std::string getChunkType() const =0;
 
@@ -158,6 +168,7 @@ class LeafChunk : public Chunk {
 		virtual ~LeafChunk() {};
 
 		virtual Chunk *clone() const =0;
+		virtual Chunk *create() const =0;
 
 		virtual std::string getChunkType() const =0;
 };
@@ -172,6 +183,7 @@ class XDIFChunk : public ContainerChunk {
 		virtual ~XDIFChunk(){};
 
 		virtual Chunk *clone() const { return new XDIFChunk(*this); };
+		virtual Chunk *create() const { return new XDIFChunk(); };
 
 		virtual std::string getChunkType() const { return "XDIF"; };
 };
@@ -206,6 +218,7 @@ class METAChunk : public LeafChunk {
 		virtual ~METAChunk() {};
 
 		virtual Chunk *clone() const { return new METAChunk(*this); };
+		virtual Chunk *create() const { return new METAChunk(); };
 
 		virtual std::string getChunkType() const { return "META"; };
 };
@@ -272,6 +285,43 @@ vector<uint8_t> Chunk::serialise(void) const
 	data.insert(data.end(), payload.data.begin(), payload.data.end());
 
 	return data;
+}
+
+Chunk *Chunk::deserialise(vector<uint8_t> data) const
+{
+	vector<uint8_t>::iterator it = data.begin();
+	bool has_children = false;
+
+	// read chunk type
+	char chunktype[5];
+	for (int i=0; i<4; i++) {
+		chunktype[i] = *it;
+		it++;
+	}
+	chunktype[5] = '\0';
+
+	cerr << "deserialise: chunktype " << chunktype << endl;
+
+	// read flag byte
+	if ((*it) & 0x80) has_children = true;
+	it++;
+
+	if (has_children)	 cerr << "deserialise: has children" << endl;
+					else cerr << "deserialise: no  children" << endl;
+
+	// skip over reserved bytes
+	it += 3;
+
+	// read chunk size
+	vector<uint8_t>::size_type sz = 0;
+	for (int i=0; i<4; i++) {
+		sz = (sz << 8) + (*it);
+		it++;
+	}
+
+	// iterator now points to the start of the data payload. let's use the
+	// factory to deserialise it.
+	// TODO!
 }
 
 
