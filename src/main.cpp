@@ -42,35 +42,66 @@ class Chunk {
 	protected:
 		// serialise only the packet payload
 		virtual SerialisedPayload serialisePayload() const =0;
-		// list of creators available
-		static std::map<std::string, Chunk *> creationMap;
 	public:
 		Chunk() {};
 		Chunk(const Chunk &copy) {};
-		virtual ~Chunk()
-		{
-			// make sure all the prototypes in creationMap are freed
-			// admittedly this is mostly to appease the beast that is Valgrind...
-			while (!creationMap.empty()) {
-				std::map<std::string, Chunk *>::iterator i = creationMap.begin();
-				// map->erase() invalidates the iterator, so keep a copy of the
-				// chunk pointer to work from
-				Chunk *x = (*i).second;
-				// remove the chunk from the map
-				creationMap.erase(i);
-				// destroy the chunk
-				delete x;
-			}
-		};
+		virtual ~Chunk() {};
 
 		// get the 4-character typestring for this chunk
 		virtual std::string getChunkType() const =0;
 		// serialise this chunk into a bytestream
 		virtual vector<uint8_t> serialise(void) const;
+		// deserialise a new chunk from a bytestream
+		virtual Chunk *deserialise(vector<uint8_t> data)
+		{
+			// not finished yet
+			return NULL;
+		}
 
 		// make a copy of this chunk
 		virtual Chunk *clone() const =0;
 };
+
+static class _x_ChunkFactory {
+	private:
+		// typing saver!
+		typedef std::map<std::string, Chunk *> _T;
+
+		// "construct on first use" idiom/pattern -- C++FAQ 10.13
+		_T& creationMap(void)
+		{
+			static _T cm;
+			return cm;
+		}
+
+	public:
+		// ctor
+		_x_ChunkFactory() {};
+
+		// dtor
+		~_x_ChunkFactory()
+		{
+			// make sure all the prototypes in creationMap are freed
+			// admittedly this is mostly to appease the beast that is Valgrind...
+			while (!creationMap().empty()) {
+				_T::iterator i = creationMap().begin();
+				// map->erase() invalidates the iterator, so keep a copy of the
+				// chunk pointer to work from
+				Chunk *x = (*i).second;
+				// remove the chunk from the map
+				creationMap().erase(i);
+				// destroy the chunk
+				delete x;
+			}
+		}
+
+		// register a new class with the factory
+		void registerClass(string chunkID, Chunk *prototype)
+		{
+			// add to the map
+			creationMap()[chunkID] = prototype;
+		}
+} chunkFactory;
 
 /****************************************************************************
  * A Container Chunk. A Chunk that can contain other Chunks.
@@ -173,8 +204,6 @@ class ChunkFactory {
 };
 
 /****************************************************************************/
-
-std::map<std::string, Chunk *> Chunk::creationMap;
 
 vector<uint8_t> Chunk::serialise(void) const
 {
