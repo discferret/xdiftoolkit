@@ -1,3 +1,16 @@
+/******
+ * Let it be known that I really don't think this API is optimal. A better
+ * way to do this would probably be to make Chunk::deserialisePayload
+ * work on the object itself instead of returning a Chunk*, then tweak
+ * Chunk::deserialise to create a new object then deserialise into it.
+ *
+ * Although that may be slightly less clean? Hm.
+ *
+ * Also, deserialise() and (probably) deserialisePayload should be made static,
+ * as they have no effect on the class itself. Then again maybe not?
+ */
+
+
 #include <cstdio>
 #include <cstdlib>
 #include <cstdint>
