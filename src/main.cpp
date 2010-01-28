@@ -266,7 +266,7 @@ class METAChunk : public LeafChunk {
 		virtual ~METAChunk() {};
 
 		virtual Chunk *clone() const { return new METAChunk(*this); };
-		virtual Chunk *create(SerialisedPayload payload) const { return new METAChunk(); };	// TODO!
+		virtual Chunk *create(SerialisedPayload payload) const { return deserialisePayload("META", payload); };
 		virtual Chunk *create() const { return new METAChunk(); };
 
 		virtual std::string getChunkType() const { return "META"; };
