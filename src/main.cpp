@@ -435,7 +435,7 @@ Chunk *ContainerChunk::deserialisePayload(string chunkID, SerialisedPayload data
 
 		// now we know where the data ends. slice!
 		SerialisedPayload sliced_data;
-		sliced_data.data.insert(sliced_data.data.end(), i_chunkstart, it+sz);
+		sliced_data.data.insert(sliced_data.data.end(), it, it+sz);
 
 		// update root iterator
 		it += sz;
