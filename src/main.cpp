@@ -8,6 +8,9 @@
  *
  * Also, deserialise() and (probably) deserialisePayload should be made static,
  * as they have no effect on the class itself. Then again maybe not?
+ *
+ * Could also make deserialisePayload() take an Iterator, which would reduce
+ * the memory usage of this code SIGNIFICANTLY on large XDIF files.
  */
 
 
