@@ -111,7 +111,7 @@ BUILD_TYPE	?=	debug
 TARGET		=	test
 
 # source files that produce object files
-SRC			=	main.cpp
+SRC			=	Chunk.cpp ContainerChunk.cpp METAChunk.cpp XDIFChunk.cpp main.cpp
 
 # source type - either "c" or "cpp" (C or C++)
 SRC_TYPE	=	cpp
