@@ -3,8 +3,6 @@
 #include <iostream>
 #include <map>
 
-#define XDIF_IMPL_Chunk
-
 #include "Chunk.h"
 #include "SerialisedPayload.h"
 #include "xdifExceptions.h"
