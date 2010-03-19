@@ -9,9 +9,19 @@
 
 using namespace std;
 
-// "construct on first use" idiom/pattern -- C++FAQ 10.13
+/**
+ * @returns reference to the chunk factory singleton
+ */
 _x_ChunkFactory &chunkFactory()
 {
+	/***
+	 * "Construct on first use" idiom/pattern -- C++FAQ 10.13
+	 * Based in part on the Singleton design pattern. Basically, we exploit the
+	 * behaviour of static variables in order to get an application-global
+	 * singleton variable. In this case, it's an instance of the Chunk Factory,
+	 * which is used by the XDIF Toolkit to manufacture and deserialise arbitrary
+	 * chunks, when all we know is the FOURCC.
+	 */
 	static _x_ChunkFactory singleton;
 	return singleton;
 }
