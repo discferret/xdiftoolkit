@@ -122,10 +122,10 @@ EXT_OBJ		=
 # is prepended automatically
 LIB			=	xdif
 # library paths -- where to search for the above libraries
-LIBPATH		=	./libxdif
+LIBPATH		=	../libxdif
 # include paths -- where to search for #include files (in addition to the
 # standard paths
-INCPATH		=	./libxdif/src
+INCPATH		=	../libxdif/src
 # garbage files that should be deleted on a 'make clean' or 'make tidy'
 GARBAGE		=
 
