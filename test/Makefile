@@ -111,7 +111,7 @@ BUILD_TYPE	?=	debug
 TARGET		=	test
 
 # source files that produce object files
-SRC			=	Chunk.cpp ContainerChunk.cpp METAChunk.cpp XDIFChunk.cpp main.cpp
+SRC			=	main.cpp
 
 # source type - either "c" or "cpp" (C or C++)
 SRC_TYPE	=	cpp
@@ -120,12 +120,12 @@ SRC_TYPE	=	cpp
 EXT_OBJ		=
 # libraries to link in -- these will be specified as "-l" parameters, the -l
 # is prepended automatically
-LIB			=
+LIB			=	xdif
 # library paths -- where to search for the above libraries
-LIBPATH		=
+LIBPATH		=	./libxdif
 # include paths -- where to search for #include files (in addition to the
 # standard paths
-INCPATH		=
+INCPATH		=	./libxdif/src
 # garbage files that should be deleted on a 'make clean' or 'make tidy'
 GARBAGE		=
 

@@ -6,3 +6,4 @@ obj/*.o
 test
 .buildnum
 src/version.h
+lib/xdif.a

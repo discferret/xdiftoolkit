@@ -2,6 +2,7 @@
 #define XDIF_INCL_SerialisedPayload
 
 #include <vector>
+#include <cstdint>
 
 /****************************************************************************
  * Serialised payload (with flags)
