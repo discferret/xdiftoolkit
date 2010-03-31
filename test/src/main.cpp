@@ -31,7 +31,7 @@
 #include "METAChunk.h"
 #include "ContainerChunk.h"
 #include "LeafChunk.h"
-#include "Init.h"
+#include "XDIFLibraryInit.h"
 
 using namespace std;
 
