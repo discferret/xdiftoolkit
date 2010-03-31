@@ -31,6 +31,7 @@
 #include "METAChunk.h"
 #include "ContainerChunk.h"
 #include "LeafChunk.h"
+#include "Init.h"
 
 using namespace std;
 
@@ -38,6 +39,9 @@ using namespace std;
 
 int main(void)
 {
+	// set up XDIF library
+	XDIFLibraryInit();
+
 	// dump list of chunk prototypes
 	chunkFactory().dump();
 

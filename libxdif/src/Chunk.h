@@ -1,6 +1,7 @@
 #ifndef XDIF_INCL_Chunk
 #define XDIF_INCL_Chunk
 
+#include <iostream>
 #include <map>
 #include <vector>
 #include <string>

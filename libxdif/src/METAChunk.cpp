@@ -8,6 +8,7 @@
 
 using namespace std;
 
+/*
 // NOTE: should be in the .cpp file, not the header
 static class _x_METAChunkInitialiser {
 	public:
@@ -16,7 +17,7 @@ static class _x_METAChunkInitialiser {
 			chunkFactory().registerClass("META", new METAChunk());
 		}
 } _xv_METAChunkInitialiser;
-
+*/
 
 /****************************************************************************/
 

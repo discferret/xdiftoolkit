@@ -342,9 +342,9 @@ tidy:	cleandep clean-versioninfo
 
 $(TARGET):	$(OBJ) $(EXTDEP)
 ifeq ($(SRC_TYPE),c)
-	$(CC) $(CXXFLAGS) $(LDFLAGS) $(OBJ) $(LIBPTH) $(LIBLNK) -o $@
+	$(CC) $(CXXFLAGS) $(LDFLAGS) $(OBJ) $(EXTDEP) $(LIBPTH) $(LIBLNK) -o $@
 else
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJ) $(LIBPTH) $(LIBLNK) -o $@
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJ) $(EXTDEP) $(LIBPTH) $(LIBLNK) -o $@
 endif
 ifeq ($(BUILD_TYPE),release)
 	$(STRIP) $(TARGET)
