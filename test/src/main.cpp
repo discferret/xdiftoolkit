@@ -25,13 +25,7 @@
 #include <iostream>
 #include <exception>
 
-#include "xdifExceptions.h"
-#include "SerialisedPayload.h"
-#include "XDIFChunk.h"
-#include "METAChunk.h"
-#include "ContainerChunk.h"
-#include "LeafChunk.h"
-#include "XDIFLibraryInit.h"
+#include "xdif/xdif.h"
 
 using namespace std;
 

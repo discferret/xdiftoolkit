@@ -125,7 +125,7 @@ LIB			=	xdif
 LIBPATH		=	../libxdif
 # include paths -- where to search for #include files (in addition to the
 # standard paths
-INCPATH		=	../libxdif/src
+INCPATH		=	../libxdif/include
 # garbage files that should be deleted on a 'make clean' or 'make tidy'
 GARBAGE		=
 
