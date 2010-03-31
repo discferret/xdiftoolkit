@@ -10,7 +10,9 @@
 using namespace std;
 
 /**
- * @returns reference to the chunk factory singleton
+ * @brief Returns a reference to the Chunk Factory singleton, instantiating it if necessary.
+ *
+ * @return reference to the chunk factory singleton
  */
 _x_ChunkFactory &chunkFactory()
 {
@@ -26,6 +28,10 @@ _x_ChunkFactory &chunkFactory()
 	return singleton;
 }
 
+/**
+ * @brief Serialise a chunk
+ * @return vector containing a bytewise representation of the chunk
+ */
 vector<uint8_t> Chunk::serialise(void) const
 {
 	vector<uint8_t> data;
@@ -62,6 +68,10 @@ vector<uint8_t> Chunk::serialise(void) const
 	return data;
 }
 
+/**
+ * @brief Deserialise a byte-vector into a new Chunk
+ *
+ */
 Chunk *Chunk::deserialise(vector<uint8_t> data)
 {
 	vector<uint8_t>::iterator it = data.begin();
