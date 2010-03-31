@@ -1,4 +1,4 @@
-OBJS = Chunk.o ContainerChunk.o METAChunk.o Init.o
+OBJS = Chunk.o ContainerChunk.o METAChunk.o XDIFLibraryInit.o
 CXX = g++
 CFLAGS = -O2
 CXXFLAGS = -std=gnu++0x

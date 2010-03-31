@@ -1,7 +1,7 @@
 #include "Chunk.h"
 #include "XDIFChunk.h"
 #include "METAChunk.h"
-#include "Init.h"
+#include "XDIFLibraryInit.h"
 
 void XDIFLibraryInit(void)
 {
